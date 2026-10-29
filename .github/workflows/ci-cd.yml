@@ -1,0 +1,61 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  # 1. Validación de código con SonarQube (Solo corre mientras el PR está ABIERTO)
+  sonar-validation:
+    if: github.event.pull_request.merged == false && startsWith(github.head_ref, 'fix/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Compilar y Analizar con SonarQube
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn clean verify sonar:sonar \
+            -Dsonar.projectKey=TU_PROJECT_KEY \
+            -Dsonar.organization=TU_ORGANIZATION \
+            -Dsonar.host.url=https://sonarcloud.io
+
+  # 2. Versionado y Despliegue en Render (Solo cuando el PR desde 'fix/' fue FUSIONADO exitosamente)
+  release-and-deploy:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'fix/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Crear Versión / Release
+        id: create_release
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Este paso envía la orden a Render. Solo aquí se ejecutará el deploy real en el servidor.
+      - name: Forzar Despliegue en Render via Actions
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
