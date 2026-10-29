@@ -30,8 +30,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn clean verify sonar:sonar \
-            -Dsonar.projectKey=TU_PROJECT_KEY \
-            -Dsonar.organization=TU_ORGANIZATION \
+            -Dsonar.projectKey=elprofevancho-uap_BACK-JOBS-API \
+            -Dsonar.organization=elprofevancho-uap \
             -Dsonar.host.url=https://sonarcloud.io
 
   # 2. Versionado y Despliegue en Render (Solo cuando el PR desde 'fix/' fue FUSIONADO exitosamente)
